@@ -1,0 +1,26 @@
+## .NET
+bin/
+obj/
+out/
+*.user
+*.userosscache
+*.suo
+project.lock.json
+artifacts/
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## VS / VS Code
+.vs/
+.vscode/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Env / secrets
+*.env
+.env
+appsettings.*.local.json
