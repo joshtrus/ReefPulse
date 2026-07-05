@@ -66,6 +66,29 @@ app.MapPost("/sites/{siteId:guid}/readings", async (
     return Results.Created($"/sites/{siteId}/readings/{reading.Id}", new { reading.Id });
 });
 
+app.MapGet("/sites/{siteId:guid}/readings", async (
+    Guid siteId, MetricType? metric, int? limit, ReefDbContext db, CancellationToken ct) =>
+{
+    if (!await db.ReefSites.AnyAsync(s => s.Id == siteId, ct))
+        return Results.NotFound($"No reef site with id {siteId}.");
+
+    var take = limit ?? 50;
+    if (take < 1) take = 1;
+    else if (take > 500) take = 500;
+
+    var query = db.Readings.Where(r => r.ReefSiteId == siteId);
+    if (metric is not null)
+        query = query.Where(r => r.Metric == metric.Value);
+
+    var readings = await query
+        .OrderByDescending(r => r.ObservedAt)
+        .Take(take)
+        .Select(r => new { r.Id, r.Metric, r.Value, r.ObservedAt, r.RecordedAt, r.Source })
+        .ToListAsync(ct);
+
+    return Results.Ok(readings);
+});
+
 // In Development, bring the schema up to date and seed reference data on boot so the app
 // is immediately usable after `docker compose up`. In production you would instead run
 // migrations as a deliberate, separate deploy step (e.g. an init job) rather than having
