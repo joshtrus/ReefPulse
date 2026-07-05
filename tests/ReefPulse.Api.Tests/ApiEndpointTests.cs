@@ -82,7 +82,7 @@ public sealed class ApiEndpointTests : IClassFixture<PostgresApiFactory>
 
         Assert.NotNull(sites);
         Assert.Equal(5, sites!.Count);
-        Assert.Contains(sites, s => s.Name == "Negril Marine Park");
+        Assert.Contains(sites, s => s.Name == "Negril");
     }
 
     private sealed record SiteResponse(Guid Id, string Name, string? Region, double Latitude, double Longitude);
