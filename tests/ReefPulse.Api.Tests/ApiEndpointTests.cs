@@ -81,8 +81,8 @@ public sealed class ApiEndpointTests : IClassFixture<PostgresApiFactory>
         var sites = await client.GetFromJsonAsync<List<SiteResponse>>("/sites");
 
         Assert.NotNull(sites);
-        Assert.Equal(3, sites!.Count);
-        Assert.Contains(sites, s => s.Name == "Palancar Reef");
+        Assert.Equal(5, sites!.Count);
+        Assert.Contains(sites, s => s.Name == "Negril Marine Park");
     }
 
     private sealed record SiteResponse(Guid Id, string Name, string? Region, double Latitude, double Longitude);

@@ -18,9 +18,11 @@ public static class SeedData
         }
 
         db.ReefSites.AddRange(
-            new ReefSite { Name = "Great Barrier Reef — Cairns", Region = "Australia", Latitude = -16.92, Longitude = 145.77 },
-            new ReefSite { Name = "Palancar Reef", Region = "Cozumel, Mexico", Latitude = 20.35, Longitude = -87.02 },
-            new ReefSite { Name = "Tubbataha Reefs", Region = "Philippines", Latitude = 8.85, Longitude = 119.92 });
+            new ReefSite { Name = "Montego Bay", Region = "St. James", Latitude = 18.4700, Longitude = -77.9500 },
+            new ReefSite { Name = "Negril", Region = "Westmoreland", Latitude = 18.2686, Longitude = -78.3466 },
+            new ReefSite { Name = "Discovery Bay", Region = "St. Ann", Latitude = 18.4667, Longitude = -77.4100 },
+            new ReefSite { Name = "Oracabessa Bay Fish Sanctuary", Region = "St. Mary", Latitude = 18.4062, Longitude = -76.9522 },
+            new ReefSite { Name = "Port Royal Cays", Region = "Kingston", Latitude = 17.9366, Longitude = -76.8414 });
 
         await db.SaveChangesAsync(ct);
     }
