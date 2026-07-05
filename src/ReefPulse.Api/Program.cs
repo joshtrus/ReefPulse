@@ -1,6 +1,9 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using ReefPulse.Api.Contracts;
+using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +13,9 @@ var connectionString = builder.Configuration.GetConnectionString("ReefPulse")
         "Missing connection string 'ReefPulse'. Set ConnectionStrings:ReefPulse in configuration.");
 
 builder.Services.AddReefPersistence(connectionString);
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Two probes with distinct meanings, matching Kubernetes' liveness/readiness model:
 //   /health/live  — is the process itself up? No dependencies. A failure means "restart me".
@@ -38,6 +44,27 @@ app.MapGet("/sites", async (ReefDbContext db, CancellationToken ct) =>
         .OrderBy(s => s.Name)
         .Select(s => new { s.Id, s.Name, s.Region, s.Latitude, s.Longitude })
         .ToListAsync(ct));
+
+app.MapPost("/sites/{siteId:guid}/readings", async (
+    Guid siteId, CreateReadingRequest request, ReefDbContext db, CancellationToken ct) =>
+{
+    if (!await db.ReefSites.AnyAsync(s => s.Id == siteId, ct))
+        return Results.NotFound($"No reef site with id {siteId}.");
+
+    var reading = new Reading
+    {
+        ReefSiteId = siteId,
+        Metric = request.Metric,
+        Value = request.Value,
+        ObservedAt = request.ObservedAt,
+        Source = request.Source
+    };
+
+    db.Readings.Add(reading);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Created($"/sites/{siteId}/readings/{reading.Id}", new { reading.Id });
+});
 
 // In Development, bring the schema up to date and seed reference data on boot so the app
 // is immediately usable after `docker compose up`. In production you would instead run
