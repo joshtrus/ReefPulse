@@ -17,11 +17,6 @@ builder.Services.AddReefPersistence(connectionString);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// Two probes with distinct meanings, matching Kubernetes' liveness/readiness model:
-//   /health/live  — is the process itself up? No dependencies. A failure means "restart me".
-//   /health/ready — can we actually serve traffic? Checks Postgres. A failure means
-//                   "keep me running but stop routing requests until my dependencies recover".
-// Conflating the two is a classic outage cause: a blip in the DB restart-loops every pod.
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddDbContextCheck<ReefDbContext>("database", tags: ["ready"]);
@@ -89,10 +84,7 @@ app.MapGet("/sites/{siteId:guid}/readings", async (
     return Results.Ok(readings);
 });
 
-// In Development, bring the schema up to date and seed reference data on boot so the app
-// is immediately usable after `docker compose up`. In production you would instead run
-// migrations as a deliberate, separate deploy step (e.g. an init job) rather than having
-// every starting instance race to migrate.
+
 if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();
@@ -103,5 +95,4 @@ if (app.Environment.IsDevelopment())
 
 app.Run();
 
-// Exposed so the integration test project can boot the real app via WebApplicationFactory<Program>.
 public partial class Program { }

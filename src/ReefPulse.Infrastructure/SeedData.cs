@@ -3,11 +3,6 @@ using ReefPulse.Domain;
 
 namespace ReefPulse.Infrastructure;
 
-/// <summary>
-/// Idempotent reference-data seeding. Populates a few well-known reef sites so the API
-/// returns something meaningful immediately after startup. Safe to call on every boot:
-/// it no-ops once sites exist.
-/// </summary>
 public static class SeedData
 {
     public static async Task EnsureSeedAsync(ReefDbContext db, CancellationToken ct = default)

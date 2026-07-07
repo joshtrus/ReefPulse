@@ -12,12 +12,6 @@ using Xunit;
 
 namespace ReefPulse.Api.Tests;
 
-// Boots the real API against a throwaway PostgreSQL container (via Testcontainers). Rather
-// than fight WebApplicationFactory's configuration precedence, we swap the DbContext
-// registration directly in ConfigureTestServices so it points at the container — a
-// deterministic override that doesn't depend on which appsettings file loads. The app's
-// own Development startup path then runs EF migrations + seeding against that container.
-// No local PostgreSQL install is required; each run gets a clean database.
 public sealed class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16").Build();
@@ -51,9 +45,6 @@ public sealed class ApiEndpointTests : IClassFixture<PostgresApiFactory>
     [Fact]
     public async Task Liveness_probe_returns_200_and_healthy()
     {
-        // /health/live carries only the dependency-free "self" check by design, so it stays
-        // healthy independent of the database — the property that keeps a DB blip from
-        // restart-looping the pod.
         var client = _factory.CreateClient();
 
         var response = await client.GetAsync("/health/live");
