@@ -5,6 +5,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ReefPulse.Api.Contracts;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
+using ReefPulse.Infrastructure.Ingestion;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,8 @@ builder.Services.AddReefPersistence(connectionString);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+builder.Services.AddReefIngestion(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])

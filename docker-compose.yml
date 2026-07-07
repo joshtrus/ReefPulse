@@ -12,6 +12,7 @@ services:
       # Inside the compose network the database is reachable at the service name "postgres",
       # not localhost. Double-underscore maps to the ConnectionStrings:ReefPulse config key.
       - ConnectionStrings__ReefPulse=Host=postgres;Port=5432;Database=reefpulse;Username=reefpulse;Password=reefpulse
+      - Ingestion__Enabled=true
     depends_on:
       postgres:
         condition: service_healthy
