@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
@@ -27,6 +28,9 @@ public sealed class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncL
             services.RemoveAll<ReefDbContext>();
             services.AddDbContext<ReefDbContext>(options =>
                 options.UseNpgsql(_postgres.GetConnectionString()));
+
+
+            services.RemoveAll<IHostedService>();
         });
     }
 

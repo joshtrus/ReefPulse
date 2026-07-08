@@ -6,6 +6,7 @@ using ReefPulse.Api.Contracts;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
 using ReefPulse.Infrastructure.Ingestion;
+using ReefPulse.Infrastructure.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddReefIngestion(builder.Configuration);
+builder.Services.AddReefMessaging(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
