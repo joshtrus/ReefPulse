@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
 using ReefPulse.Infrastructure.Ingestion;
+using ReefPulse.Infrastructure.Messaging;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -84,7 +85,7 @@ public sealed class ApiEndpointTests : IClassFixture<PostgresApiFactory>
     }
 
     [Fact]
-    public async Task Ingestor_saves_a_temperature_and_wave_reading_per_site()
+    public async Task Ingestor_publishes_a_temperature_and_wave_event_per_site()
     {
         _ = _factory.CreateClient();   // boot the app so migrations run and reef sites are seeded
 
@@ -93,23 +94,22 @@ public sealed class ApiEndpointTests : IClassFixture<PostgresApiFactory>
             SeaSurfaceTemperatureCelsius: 29.5,
             WaveHeightMeters: 1.2);
         var fakeClient = new FakeOpenMeteoClient(snapshot);
+        var fakeProducer = new FakeReadingProducer();
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
 
         var siteCount = await db.ReefSites.CountAsync();
-        var added = await MarineIngestor.IngestAsync(db, fakeClient, NullLogger.Instance);
+        var published = await MarineIngestor.IngestAsync(db, fakeClient, fakeProducer, NullLogger.Instance);
 
-        Assert.Equal(siteCount * 2, added);
-
-        var readings = await db.Readings.Where(r => r.Source == "open-meteo").ToListAsync();
-        Assert.Equal(siteCount * 2, readings.Count);
+        Assert.Equal(siteCount * 2, published);
+        Assert.Equal(siteCount * 2, fakeProducer.Published.Count);
         Assert.All(
-            readings.Where(r => r.Metric == MetricType.WaterTemperatureCelsius),
-            r => Assert.Equal(29.5, r.Value, 3));
+            fakeProducer.Published.Where(e => e.Metric == MetricType.WaterTemperatureCelsius),
+            e => Assert.Equal(29.5, e.Value, 3));
         Assert.All(
-            readings.Where(r => r.Metric == MetricType.WaveHeightMeters),
-            r => Assert.Equal(1.2, r.Value, 3));
+            fakeProducer.Published.Where(e => e.Metric == MetricType.WaveHeightMeters),
+            e => Assert.Equal(1.2, e.Value, 3));
     }
 
     private sealed record SiteResponse(Guid Id, string Name, string? Region, double Latitude, double Longitude);

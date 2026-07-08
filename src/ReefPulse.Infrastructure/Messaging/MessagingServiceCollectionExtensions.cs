@@ -12,6 +12,7 @@ public static class MessagingServiceCollectionExtensions
             configuration.GetSection(KafkaOptions.SectionName));
 
         services.AddHostedService<KafkaTopicInitializer>();
+        services.AddSingleton<IReadingProducer, KafkaReadingProducer>();
 
         return services;
     }

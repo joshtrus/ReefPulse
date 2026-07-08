@@ -2,21 +2,25 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ReefPulse.Infrastructure.Messaging;
 
 namespace ReefPulse.Infrastructure.Ingestion;
 
 public sealed class MarineIngestionWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IReadingProducer _producer;
     private readonly IngestionOptions _options;
     private readonly ILogger<MarineIngestionWorker> _logger;
 
     public MarineIngestionWorker(
         IServiceScopeFactory scopeFactory,
+        IReadingProducer producer,
         IOptions<IngestionOptions> options,
         ILogger<MarineIngestionWorker> logger)
     {
         _scopeFactory = scopeFactory;
+        _producer = producer;
         _options = options.Value;
         _logger = logger;
     }
@@ -50,6 +54,6 @@ public sealed class MarineIngestionWorker : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
         var client = scope.ServiceProvider.GetRequiredService<IOpenMeteoClient>();
 
-        await MarineIngestor.IngestAsync(db, client, _logger, ct);
+        await MarineIngestor.IngestAsync(db, client, _producer, _logger, ct);
     }
 }

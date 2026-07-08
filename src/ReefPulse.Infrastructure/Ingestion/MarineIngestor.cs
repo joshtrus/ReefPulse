@@ -1,19 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ReefPulse.Domain;
+using ReefPulse.Infrastructure.Messaging;
 
 namespace ReefPulse.Infrastructure.Ingestion;
 
 public static class MarineIngestor
 {
     public static async Task<int> IngestAsync(
-        ReefDbContext db, IOpenMeteoClient client, ILogger logger, CancellationToken ct = default)
+        ReefDbContext db, IOpenMeteoClient client, IReadingProducer producer, ILogger logger,
+        CancellationToken ct = default)
     {
         var sites = await db.ReefSites
             .Select(s => new { s.Id, s.Name, s.Latitude, s.Longitude })
             .ToListAsync(ct);
 
-        var added = 0;
+        var published = 0;
         foreach (var site in sites)
         {
             try
@@ -25,23 +27,13 @@ public static class MarineIngestor
                     continue;
                 }
 
-                db.Readings.Add(new Reading
-                {
-                    ReefSiteId = site.Id,
-                    Metric = MetricType.WaterTemperatureCelsius,
-                    Value = snapshot.SeaSurfaceTemperatureCelsius,
-                    ObservedAt = snapshot.ObservedAt,
-                    Source = "open-meteo"
-                });
-                db.Readings.Add(new Reading
-                {
-                    ReefSiteId = site.Id,
-                    Metric = MetricType.WaveHeightMeters,
-                    Value = snapshot.WaveHeightMeters,
-                    ObservedAt = snapshot.ObservedAt,
-                    Source = "open-meteo"
-                });
-                added += 2;
+                await producer.PublishAsync(new ReadingEvent(
+                    site.Id, MetricType.WaterTemperatureCelsius,
+                    snapshot.SeaSurfaceTemperatureCelsius, snapshot.ObservedAt, "open-meteo"), ct);
+                await producer.PublishAsync(new ReadingEvent(
+                    site.Id, MetricType.WaveHeightMeters,
+                    snapshot.WaveHeightMeters, snapshot.ObservedAt, "open-meteo"), ct);
+                published += 2;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -49,12 +41,11 @@ public static class MarineIngestor
             }
         }
 
-        if (added > 0)
+        if (published > 0)
         {
-            await db.SaveChangesAsync(ct);
-            logger.LogInformation("Ingested {Count} readings across {Sites} sites.", added, sites.Count);
+            logger.LogInformation("Published {Count} reading events across {Sites} sites.", published, sites.Count);
         }
 
-        return added;
+        return published;
     }
 }
