@@ -13,6 +13,7 @@ public static class MessagingServiceCollectionExtensions
 
         services.AddHostedService<KafkaTopicInitializer>();
         services.AddSingleton<IReadingProducer, KafkaReadingProducer>();
+        services.AddHostedService<ReadingConsumerWorker>();
 
         return services;
     }
