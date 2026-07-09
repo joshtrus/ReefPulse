@@ -112,5 +112,45 @@ public sealed class ApiEndpointTests : IClassFixture<PostgresApiFactory>
             e => Assert.Equal(1.2, e.Value, 3));
     }
 
+    [Fact]
+    public async Task Persisting_the_same_event_twice_saves_only_one_reading()
+    {
+        _ = _factory.CreateClient();
+
+        Guid siteId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
+            siteId = await db.ReefSites.Select(s => s.Id).FirstAsync();
+        }
+
+        var reading = new ReadingEvent(
+            SiteId: siteId,
+            Metric: MetricType.WaterTemperatureCelsius,
+            Value: 29.5,
+            ObservedAt: new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero),
+            Source: "idempotency-test");
+
+        var first = await PersistInNewScope(reading);
+        var second = await PersistInNewScope(reading);
+
+        Assert.True(first);    // inserted
+        Assert.False(second);  // duplicate skipped
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
+            var count = await db.Readings.CountAsync(r => r.Source == "idempotency-test");
+            Assert.Equal(1, count);
+        }
+    }
+
+    private async Task<bool> PersistInNewScope(ReadingEvent reading)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
+        return await ReadingPersister.PersistAsync(db, reading);
+    }
+
     private sealed record SiteResponse(Guid Id, string Name, string? Region, double Latitude, double Longitude);
 }

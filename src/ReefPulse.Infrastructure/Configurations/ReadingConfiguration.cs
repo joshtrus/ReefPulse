@@ -19,5 +19,8 @@ internal sealed class ReadingConfiguration : IEntityTypeConfiguration<Reading>
         builder.Property(r => r.Source).HasMaxLength(100).IsRequired();
         
         builder.HasIndex(r => new { r.ReefSiteId, r.ObservedAt });
+
+        // One reading per site/metric/time/source: makes duplicate deliveries a no-op.
+        builder.HasIndex(r => new { r.ReefSiteId, r.Metric, r.ObservedAt, r.Source }).IsUnique();
     }
 }

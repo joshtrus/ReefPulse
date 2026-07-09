@@ -1,10 +1,13 @@
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using ReefPulse.Domain;
 
 namespace ReefPulse.Infrastructure.Messaging;
 
 public static class ReadingPersister
 {
-    public static async Task PersistAsync(ReefDbContext db, ReadingEvent reading, CancellationToken ct = default)
+    public static async Task<bool> PersistAsync(
+        ReefDbContext db, ReadingEvent reading, CancellationToken ct = default)
     {
         db.Readings.Add(new Reading
         {
@@ -15,6 +18,16 @@ public static class ReadingPersister
             Source = reading.Source
         });
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Duplicate delivery (at-least-once): the reading already exists, so this is a no-op.
+            return false;
+        }
     }
 }
