@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Npgsql;
 using ReefPulse.Api.Contracts;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
@@ -61,7 +62,15 @@ app.MapPost("/sites/{siteId:guid}/readings", async (
     };
 
     db.Readings.Add(reading);
-    await db.SaveChangesAsync(ct);
+    try
+    {
+        await db.SaveChangesAsync(ct);
+    }
+    catch (DbUpdateException ex)
+        when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+    {
+        return Results.Conflict("A reading for this site, metric, time, and source already exists.");
+    }
 
     return Results.Created($"/sites/{siteId}/readings/{reading.Id}", new { reading.Id });
 });
