@@ -100,6 +100,37 @@ app.MapGet("/sites/{siteId:guid}/readings", async (
     return Results.Ok(readings);
 });
 
+app.MapGet("/alerts", async (AlertStatus? status, ReefDbContext db, CancellationToken ct) =>
+    await db.Alerts
+        .Where(a => a.Status == (status ?? AlertStatus.Active))
+        .OrderByDescending(a => a.TriggeredAt)
+        .Select(a => new
+        {
+            a.Id,
+            SiteName = a.ReefSite!.Name,
+            a.Metric,
+            a.Threshold,
+            a.TriggeredValue,
+            a.TriggeredAt,
+            a.ResolvedAt,
+            a.Status
+        })
+        .ToListAsync(ct));
+
+app.MapGet("/sites/{siteId:guid}/alerts", async (Guid siteId, ReefDbContext db, CancellationToken ct) =>
+{
+    if (!await db.ReefSites.AnyAsync(s => s.Id == siteId, ct))
+        return Results.NotFound($"No reef site with id {siteId}.");
+
+    var alerts = await db.Alerts
+        .Where(a => a.ReefSiteId == siteId)
+        .OrderByDescending(a => a.TriggeredAt)
+        .Select(a => new { a.Id, a.Metric, a.Threshold, a.TriggeredValue, a.TriggeredAt, a.ResolvedAt, a.Status })
+        .ToListAsync(ct);
+
+    return Results.Ok(alerts);
+});
+
 
 if (app.Environment.IsDevelopment())
 {
