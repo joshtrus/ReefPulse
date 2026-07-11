@@ -95,4 +95,45 @@ public sealed class PipelineEndToEndTests : IClassFixture<KafkaPipelineFactory>
 
         return false;
     }
+
+    [Fact]
+    public async Task Hot_reading_published_to_kafka_raises_a_bleaching_alert()
+    {
+        _ = _factory.CreateClient();
+
+        Guid siteId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
+            siteId = await db.ReefSites.Select(s => s.Id).FirstAsync();
+        }
+
+        var producer = _factory.Services.GetRequiredService<IReadingProducer>();
+        var hotReading = new ReadingEvent(
+            SiteId: siteId,
+            Metric: MetricType.WaterTemperatureCelsius,
+            Value: 33.0,
+            ObservedAt: new DateTimeOffset(2026, 7, 11, 10, 0, 0, TimeSpan.Zero),
+            Source: "e2e-alert-test");
+
+        await producer.PublishAsync(hotReading);
+
+        var alerted = await WaitForActiveAlertAsync(siteId, TimeSpan.FromSeconds(30));
+        Assert.True(alerted, "detector did not raise a bleaching alert for the hot reading within the timeout");
+    }
+
+    private async Task<bool> WaitForActiveAlertAsync(Guid siteId, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
+            if (await db.Alerts.AnyAsync(a => a.ReefSiteId == siteId && a.Status == AlertStatus.Active))
+                return true;
+            await Task.Delay(500);
+        }
+
+        return false;
+    }
 }
