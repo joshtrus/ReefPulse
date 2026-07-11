@@ -11,6 +11,8 @@ public static class DetectionServiceCollectionExtensions
         services.Configure<BleachingOptions>(
             configuration.GetSection(BleachingOptions.SectionName));
 
+        services.AddHostedService<BleachingDetectionWorker>();
+
         return services;
     }
 }
