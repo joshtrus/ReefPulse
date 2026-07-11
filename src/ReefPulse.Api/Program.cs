@@ -6,6 +6,7 @@ using Npgsql;
 using ReefPulse.Api.Contracts;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
+using ReefPulse.Infrastructure.Detection;
 using ReefPulse.Infrastructure.Ingestion;
 using ReefPulse.Infrastructure.Messaging;
 
@@ -22,6 +23,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddReefIngestion(builder.Configuration);
 builder.Services.AddReefMessaging(builder.Configuration);
+builder.Services.AddReefDetection(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
