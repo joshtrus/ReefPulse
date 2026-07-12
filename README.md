@@ -137,6 +137,6 @@ dotnet ef migrations add <Name> -p src/ReefPulse.Infrastructure -s src/ReefPulse
 - [x] **M2 — Persistence:** Postgres + EF Core, layered domain (reef sites / readings), migrations, liveness/readiness probes, Testcontainers integration tests
 - [x] **M2.5 — Ingestion (synchronous):** readings API (POST/GET), real Open-Meteo background ingestion for Jamaican reefs, config-gated
 - [x] **M3 — Kafka:** event-driven pipeline (producer → topic → consumer), per-site keyed partitioning, at-least-once + idempotent consumer, end-to-end Testcontainers test
-- [ ] **M4 — Processing & anomaly detection**
+- [x] **M4 — Processing & anomaly detection**
 - [ ] **M5 — Observability:** OpenTelemetry traces + Prometheus metrics + Grafana
 - [ ] **M6 — Caching, resiliency (retries/circuit breakers), and hardening**
