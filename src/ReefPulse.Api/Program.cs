@@ -10,6 +10,7 @@ using ReefPulse.Infrastructure;
 using ReefPulse.Infrastructure.Detection;
 using ReefPulse.Infrastructure.Ingestion;
 using ReefPulse.Infrastructure.Messaging;
+using ReefPulse.Infrastructure.Observability;
 using MetricType = ReefPulse.Domain.MetricType;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,10 +32,13 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddDbContextCheck<ReefDbContext>("database", tags: ["ready"]);
 
+builder.Services.AddSingleton<ReefMetrics>();
+
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics
         .AddAspNetCoreInstrumentation()
         .AddRuntimeInstrumentation()
+        .AddMeter(ReefMetrics.MeterName)
         .AddPrometheusExporter());
 
 var app = builder.Build();

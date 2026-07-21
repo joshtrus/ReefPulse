@@ -1,13 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using ReefPulse.Domain;
+using ReefPulse.Infrastructure.Observability;
 
 namespace ReefPulse.Infrastructure.Messaging;
 
 public static class ReadingPersister
 {
     public static async Task<bool> PersistAsync(
-        ReefDbContext db, ReadingEvent reading, CancellationToken ct = default)
+        ReefDbContext db, ReadingEvent reading, ReefMetrics? metrics = null, CancellationToken ct = default)
     {
         db.Readings.Add(new Reading
         {
@@ -21,6 +22,8 @@ public static class ReadingPersister
         try
         {
             await db.SaveChangesAsync(ct);
+            metrics?.ReadingPersisted();
+            metrics?.RecordIngestLagSeconds((DateTimeOffset.UtcNow - reading.ObservedAt).TotalSeconds);
             return true;
         }
         catch (DbUpdateException ex)

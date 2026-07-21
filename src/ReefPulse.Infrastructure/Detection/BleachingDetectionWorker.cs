@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure.Messaging;
+using ReefPulse.Infrastructure.Observability;
 
 namespace ReefPulse.Infrastructure.Detection;
 
@@ -14,17 +15,20 @@ public sealed class BleachingDetectionWorker : BackgroundService
     private const string DetectorGroup = "reefpulse-detectors";
 
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ReefMetrics _metrics;
     private readonly KafkaOptions _kafka;
     private readonly BleachingOptions _bleaching;
     private readonly ILogger<BleachingDetectionWorker> _logger;
 
     public BleachingDetectionWorker(
         IServiceScopeFactory scopeFactory,
+        ReefMetrics metrics,
         IOptions<KafkaOptions> kafka,
         IOptions<BleachingOptions> bleaching,
         ILogger<BleachingDetectionWorker> logger)
     {
         _scopeFactory = scopeFactory;
+        _metrics = metrics;
         _kafka = kafka.Value;
         _bleaching = bleaching.Value;
         _logger = logger;
@@ -96,6 +100,7 @@ public sealed class BleachingDetectionWorker : BackgroundService
                     TriggeredAt = reading.ObservedAt
                 });
                 await db.SaveChangesAsync(ct);
+                _metrics.AlertOpened();
                 _logger.LogWarning(
                     "Bleaching alert OPENED for site {Site} at {Value}°C.", reading.SiteId, reading.Value);
                 break;
@@ -104,6 +109,7 @@ public sealed class BleachingDetectionWorker : BackgroundService
                 activeAlert!.Status = AlertStatus.Resolved;
                 activeAlert.ResolvedAt = reading.ObservedAt;
                 await db.SaveChangesAsync(ct);
+                _metrics.AlertResolved();
                 _logger.LogInformation(
                     "Bleaching alert RESOLVED for site {Site} at {Value}°C.", reading.SiteId, reading.Value);
                 break;

@@ -3,21 +3,25 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ReefPulse.Infrastructure.Observability;
 
 namespace ReefPulse.Infrastructure.Messaging;
 
 public sealed class ReadingConsumerWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ReefMetrics _metrics;
     private readonly KafkaOptions _options;
     private readonly ILogger<ReadingConsumerWorker> _logger;
 
     public ReadingConsumerWorker(
         IServiceScopeFactory scopeFactory,
+        ReefMetrics metrics,
         IOptions<KafkaOptions> options,
         ILogger<ReadingConsumerWorker> logger)
     {
         _scopeFactory = scopeFactory;
+        _metrics = metrics;
         _options = options.Value;
         _logger = logger;
     }
@@ -54,7 +58,7 @@ public sealed class ReadingConsumerWorker : BackgroundService
 
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 var db = scope.ServiceProvider.GetRequiredService<ReefDbContext>();
-                await ReadingPersister.PersistAsync(db, result.Message.Value, ct);
+                await ReadingPersister.PersistAsync(db, result.Message.Value, _metrics, ct);
 
                 consumer.Commit(result);   // at-least-once: commit only after a successful save
             }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure.Messaging;
+using ReefPulse.Infrastructure.Observability;
 
 namespace ReefPulse.Infrastructure.Ingestion;
 
@@ -9,7 +10,7 @@ public static class MarineIngestor
 {
     public static async Task<int> IngestAsync(
         ReefDbContext db, IOpenMeteoClient client, IReadingProducer producer, ILogger logger,
-        CancellationToken ct = default)
+        ReefMetrics? metrics = null, CancellationToken ct = default)
     {
         var sites = await db.ReefSites
             .Select(s => new { s.Id, s.Name, s.Latitude, s.Longitude })
@@ -30,9 +31,13 @@ public static class MarineIngestor
                 await producer.PublishAsync(new ReadingEvent(
                     site.Id, MetricType.WaterTemperatureCelsius,
                     snapshot.SeaSurfaceTemperatureCelsius, snapshot.ObservedAt, "open-meteo"), ct);
+                metrics?.ReadingPublished();
+
                 await producer.PublishAsync(new ReadingEvent(
                     site.Id, MetricType.WaveHeightMeters,
                     snapshot.WaveHeightMeters, snapshot.ObservedAt, "open-meteo"), ct);
+                metrics?.ReadingPublished();
+
                 published += 2;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
