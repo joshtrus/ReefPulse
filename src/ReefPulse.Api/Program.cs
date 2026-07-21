@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
+using OpenTelemetry.Metrics;
 using ReefPulse.Api.Contracts;
 using ReefPulse.Domain;
 using ReefPulse.Infrastructure;
 using ReefPulse.Infrastructure.Detection;
 using ReefPulse.Infrastructure.Ingestion;
 using ReefPulse.Infrastructure.Messaging;
+using MetricType = ReefPulse.Domain.MetricType;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +31,12 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddDbContextCheck<ReefDbContext>("database", tags: ["ready"]);
 
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
+
 var app = builder.Build();
 
 app.MapGet("/", () => "ReefPulse API is running. See /health/live and /health/ready.");
@@ -41,6 +49,8 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+
+app.MapPrometheusScrapingEndpoint();
 
 app.MapGet("/sites", async (ReefDbContext db, CancellationToken ct) =>
     await db.ReefSites

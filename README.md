@@ -111,6 +111,7 @@ The simplest path is Docker, which starts the API and PostgreSQL together. The A
 EF Core migrations and seeds a few reef sites on startup, so it is usable immediately:
 
 ```bash
+cp .env.example .env      # one-time: local-dev credentials (this .env is git-ignored)
 docker compose up --build
 # then:
 #   http://localhost:8080/health/live           -> Healthy
